@@ -7,6 +7,9 @@ import vueDevTools from "vite-plugin-vue-devtools";
 import * as Vue from "vue";
 import * as ElementPlus from "element-plus";
 import * as Three from "three";
+import * as TauriApiPath from "@tauri-apps/api/path";
+import * as TauriApiCore from "@tauri-apps/api/core";
+import * as tauriApiEvent from "@tauri-apps/api/event";
 
 function externalizePlugin(deps: Record<string, Record<string, any>>) {
   return {
@@ -39,6 +42,9 @@ export default defineConfig({
       vue: Vue,
       "element-plus": ElementPlus,
       three: Three,
+      "@tauri-apps/api/path": TauriApiPath,
+      "@tauri-apps/api/core": TauriApiCore,
+      "@tauri-apps/api/event": tauriApiEvent,
     }),
   ],
   resolve: {

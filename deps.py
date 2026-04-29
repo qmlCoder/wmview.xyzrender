@@ -13,8 +13,8 @@ def install_package(package: str) -> bool:
     try:
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", package,"-i","https://pypi.tuna.tsinghua.edu.cn/simple/"],
-            stdout=subprocess.DEVNULL,  # 隐藏安装日志（如需显示可删除）
-            stderr=subprocess.STDOUT
+            stdout=sys.stdout,
+            stderr=sys.stderr
         )
         return True
     except subprocess.CalledProcessError:

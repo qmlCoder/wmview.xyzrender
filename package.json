@@ -11,6 +11,7 @@
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
+    "@tauri-apps/plugin-fs": "^2.5.0",
     "three": "^0.184.0",
     "vue": "^3.5.32"
   },

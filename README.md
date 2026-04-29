@@ -1,5 +1,9 @@
 # wmview.xyzrender
 
-这是一个WmView程序的插件项目，主程序的目录在 E:\code\wmview\wmview_desktop
+这是一个WmView程序的插件项目，需要结合wmview使用
 
-该插件调用本地python环境中安装xyzrender，根据主程序暴漏的api，来实现两者的互通
+## 使用方式
+
+将打包的压缩包解压到wmview程序根目录下的plugins目录，重新启动wmview程序即可
+
+插件内包含了一个嵌入式python，第一次使用的时候会自动安装依赖，需要等待一会

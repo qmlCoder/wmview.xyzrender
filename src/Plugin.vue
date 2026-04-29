@@ -32,11 +32,10 @@ div.stderr {
   <item-panel title="显示氢原子">
     <el-switch v-model="refs.showHatom"></el-switch>
   </item-panel>
+  <item-panel title="图片类型"></item-panel>
   <div>
     <el-button @click="gen_img">生成图片</el-button>
   </div>
-  <div :class="$style.stdout">{{ refs.stdout }}</div>
-  <div :class="$style.stderr">{{ refs.stderr }}</div>
   <img :src="refs.imgPath" v-if="refs.imgPath != ''" style="width: 100%;height: auto;">
 </template>
 
@@ -44,37 +43,45 @@ div.stderr {
 <script setup lang="ts">
 import ItemPanel from "./ItemPanel.vue";
 import { ElButton, ElInput, ElSwitch } from "element-plus";
-import { inject, ref } from "vue";
+import { ref } from "vue";
 import * as THREE from "three";
-import type { Scene } from "./wmview";
-const { run_exe, get_moleXyzs, save_text } = window.WmAPI;
+import { listen } from "@tauri-apps/api/event";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
+const wmapi = window.WmAPI;
 
 
 const refs = ref({
   plugin_fold: "",
   imgPath: "",
-  stderr: "标准输出:",
-  stdout: "标准错误:",
+  stderr: [] as string[],
+  stdout: [] as string[],
   testnum: 0,
   showHatom: false
 })
 
+// 开发时的插件文件夹
 if (import.meta.env.DEV) {
   refs.value.plugin_fold = "E:/code/wmview/plugins/wmview.xyzrender"
 }
+// 运行时的插件文件夹
 if (import.meta.env.PROD) {
   refs.value.plugin_fold = window.WmAPI.get_appRoot() + "/plugins/wmview.xyzrender"
 }
 
-// import { Command } from '@tauri-apps/plugin-shell';
-const scene = inject('scene') as Scene;
-
-console.log("测试组件被加载了", scene)
-
 
 const gen_files = async () => {
   let xyz_text = ""
-  const [syms, xyzs] = get_moleXyzs()
+  const scene = wmapi.get_scene()
+  const mole = scene.moles.get()
+  if (!mole) return;
+  const syms = [];
+  const xyzs = [];
+  const atoms = mole.atoms.getAll();
+  for (const atom of atoms) {
+    syms.push(atom.sym);
+    xyzs.push(atom.position.toArray());
+  }
   for (let i = 0; i < syms.length; i++) {
     const sym = syms[i]?.padStart(2, ' ');
     const xyz = xyzs[i] as number[];
@@ -83,7 +90,7 @@ const gen_files = async () => {
     const z = xyz[2]?.toFixed(4).padStart(10, ' ');
     xyz_text += `${sym}          ${x}${y}${z}\n`
   }
-  await save_text(`${refs.value.plugin_fold}/atom_xyzs.txt`, xyz_text)
+  await writeTextFile(`${refs.value.plugin_fold}/atom_xyzs.txt`, xyz_text)
   const camera = scene.get_camera()
   const dirX = new THREE.Vector3();
   const dirY = new THREE.Vector3();
@@ -98,26 +105,35 @@ const gen_files = async () => {
     }
     camera_text += '\n'
   }
-  await save_text(`${refs.value.plugin_fold}/cameraMatrix.txt`, camera_text)
+  await writeTextFile(`${refs.value.plugin_fold}/cameraMatrix.txt`, camera_text)
+}
+
+interface Stdin {
+  showHatom: boolean;
 }
 
 const gen_img = async () => {
-  const mole = scene.moles.get();
+  const mole = wmapi.get_scene().moles.get();
   if (!mole) return;
+  wmapi.show_loading("xyzrender渲染中...")
   await gen_files()
-  const pythonPath = `${refs.value.plugin_fold}/python-3.10/python.exe`;
+  const pythonPath = `${refs.value.plugin_fold}/python-3.10/pythonw.exe`;
   const scriptPath = `${refs.value.plugin_fold}/main.py`;
   const args = [scriptPath]
-  const [success, out, err] = await run_exe(pythonPath, args)
-
-  console.log(out)
-  if (success) {
-    refs.value.stdout = out
-    const imgPath = window.WmAPI.convertFileSrc(`${refs.value.plugin_fold}/test.svg`)
-    refs.value.imgPath = `${imgPath}?t=${Date.now()}`
-  } else {
-    refs.value.stderr = err
-    console.error(err)
+  const input: Stdin = {
+    showHatom: refs.value.showHatom,
   }
+  const success = await wmapi.run_exe("plugin_xyzrender", pythonPath, args, JSON.stringify(input));
+  console.log("exe执行结果:", success)
+  if (success) {
+    const imgPath = convertFileSrc(`${refs.value.plugin_fold}/test.svg`)
+    refs.value.imgPath = `${imgPath}?t=${Date.now()}`
+  }
+  wmapi.hide_loading()
 }
+
+listen("plugin_xyzrender:RunExe:stdout", (event) => {
+  console.log("exe stdout:", event.payload)
+  wmapi.add_logText("xyzrender", `${event.payload}`)
+})
 </script>

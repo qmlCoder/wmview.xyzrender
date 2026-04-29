@@ -1,5 +1,6 @@
 import * as THREE from "three";
-export class Scene {
+
+export interface Scene {
   declare moles: Moles;
   constructor();
 
@@ -200,7 +201,7 @@ export class Atoms {
   get_center(atms: number[]): number[];
 }
 
-export class Atom {
+export class Atom extends THREE.Mesh {
   sym: string;
   idx: number;
   constructor(mole: Mole, sym: string, xyz: number[][], idx: number);

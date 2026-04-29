@@ -2,6 +2,8 @@
 from pathlib import Path
 import sys
 import re
+import json
+from typing import TypedDict
 
 SCRIPT_DIR = str(Path(__file__).parent.as_posix())
 sys.path.insert(0, SCRIPT_DIR)
@@ -9,6 +11,8 @@ import deps
 
 def read_atomXyzs():
     text=Path(f"{SCRIPT_DIR}/atom_xyzs.txt").read_text()
+    print("原子坐标数据：")
+    print(text)
     xyzs=[]
     syms=[]
     for line in text.splitlines():
@@ -27,7 +31,7 @@ def read_cameraMatrix():
     nums=[float(e) for e in nums]
     return np.array(nums).reshape(3,3).T
 
-def gen_img():
+def gen_img(input_data: "Stdin"):
     syms,xyzs=read_atomXyzs() # 坐标是提前导出的
     natm=len(syms)
     tmat=read_cameraMatrix()
@@ -39,7 +43,10 @@ def gen_img():
         texts.append(f"{sym:>3}           {x:>14.8f}{y:>14.8f}{z:>14.8f}")
     Path(f"{SCRIPT_DIR}/test.xyz").write_text("\n".join(texts))
     mole=load(f"{SCRIPT_DIR}/test.xyz")
-    render(mole,orient=False,output=f"{SCRIPT_DIR}/test.svg")
+    render(mole,orient=False,output=f"{SCRIPT_DIR}/test.svg",hy=input_data["showHatom"])
+
+class Stdin(TypedDict):
+    showHatom: bool
 
 if __name__=="__main__":
     depsok=deps.check_dependencies() # 检查并安装依赖
@@ -48,4 +55,6 @@ if __name__=="__main__":
         sys.exit(1)
     from xyzrender import load,render
     import numpy as np
-    gen_img()
+    stdin=sys.stdin.read()
+    input_data: Stdin = json.loads(stdin)
+    gen_img(input_data)
