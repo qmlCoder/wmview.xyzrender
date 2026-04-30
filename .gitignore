@@ -46,3 +46,5 @@ cameraMatrix.txt
 test.svg
 test.xyz
 *.zip
+ref.xyz
+log.txt

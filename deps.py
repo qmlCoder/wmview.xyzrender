@@ -8,11 +8,13 @@ REQUIRED_PACKAGES: list[str] = [
     "xyzrender==0.2.6",  # 主库
 ]
 
+
 def install_package(package: str) -> bool:
     """安装单个依赖包，返回是否成功"""
     try:
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", package,"-i","https://pypi.tuna.tsinghua.edu.cn/simple/"],
+            [sys.executable, "-m", "pip", "install", package,
+                "-i", "https://pypi.tuna.tsinghua.edu.cn/simple/"],
             stdout=sys.stdout,
             stderr=sys.stderr
         )
@@ -20,6 +22,7 @@ def install_package(package: str) -> bool:
     except subprocess.CalledProcessError:
         print(f"[ERROR] install {package} failed! try: pip install {package}")
         return False
+
 
 def check_dependencies() -> bool:
     """检查所有依赖，缺失则自动安装"""
@@ -42,3 +45,7 @@ def check_dependencies() -> bool:
 
     print("[OK] deps installed!\n")
     return True
+
+
+if __name__ == "__main__":
+    check_dependencies()

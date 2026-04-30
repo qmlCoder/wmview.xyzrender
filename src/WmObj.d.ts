@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-export interface Scene {
+export class Scene {
   declare moles: Moles;
   constructor();
 
@@ -73,6 +73,7 @@ export class Mole {
   declare bonds: Bonds;
   declare labels: Labels;
   declare arrows: Arrows;
+  declare name: string;
   constructor(name: string, scene: Scene);
 
   /**
