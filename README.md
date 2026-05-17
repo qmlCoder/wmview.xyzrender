@@ -1,6 +1,11 @@
 # wmview.xyzrender
 
-这是一个WmView程序的插件项目，需要结合wmview使用
+这是一个wmview程序的插件项目，需要结合wmview使用
+
+该插件会调用xyzrender绘制分子图像
+
+- xyzrender: https://github.com/aligfellow/xyzrender
+- wmview: http://www.wmview.xyz/
 
 ## 使用方式
 

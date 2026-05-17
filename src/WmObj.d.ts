@@ -1,9 +1,6 @@
-import * as THREE from "three";
-
 export class Scene {
   declare moles: Moles;
   constructor();
-
   /**
    * 设置相机控制器的焦点
    * @param x 焦点坐标x
@@ -14,13 +11,12 @@ export class Scene {
 
   /**
    * 获取当前相机，返回透视相机或正交相机，场景中只有这两个相机
-   * @returns {THREE.PerspectiveCamera | THREE.OrthographicCamera} 当前相机
    */
   get_camera(): THREE.PerspectiveCamera | THREE.OrthographicCamera;
-  set_camera(idx: number): void;
+  set_camera(idx?: number, prop?: string): void;
   save_image(name: string): void;
   save_model(name: string, type: string): void;
-  show_mol(uuid: string): void;
+  show_mole(uuid: string): void;
   set_sceneMode(mode: string): void;
   set_visual(type: string): void;
 }
@@ -34,18 +30,19 @@ export class Moles {
    * @param name 分子名
    * @param syms 原子符号
    * @param xyzs 原子坐标
-   * @param showLabel 是否显示标签
+   * @param eles 电子信息 [nela, nelb, charge, multip]
+   * @param bonds 可选的键连接数组
    */
   append(
     name: string,
     syms: string[],
     xyzs: number[][],
-    showLabel: boolean,
+    eles: number[],
+    bonds?: [number, number][],
   ): Mole;
 
   /**
    * 获取所有分子
-   * @returns {Mole[]} 所有分子
    */
   getAll(): Mole[];
 
@@ -53,18 +50,15 @@ export class Moles {
    * 获取当前分子或指定分子
    * @param name 分子名
    * @param uuid 分子uuid
+   * @param notify 未找到时是否提示
    */
-  get(
-    name: string = "",
-    uuid: string = "",
-    notify: boolean = true,
-  ): Mole | undefined;
+  get(name?: string, uuid?: string, notify?: boolean): Mole | undefined;
 
   /**
-   * 显示指定分子分子
+   * 显示指定uuid的分子，隐藏其他分子
    * @param uuid 分子uuid
    */
-  show_mol(uuid: string): void;
+  show_mole(uuid: string): void;
 }
 
 export class Mole {
@@ -73,72 +67,65 @@ export class Mole {
   declare bonds: Bonds;
   declare labels: Labels;
   declare arrows: Arrows;
+  declare clouds: Clouds;
+  declare angles: Angles;
+  declare points: Points;
+  declare surfs: Surfs;
   declare name: string;
   constructor(name: string, scene: Scene);
 
   /**
    * 设置当前分子是否可见
-   * @param visible 是否可见
    */
   set_visible(visible: boolean): void;
 
   /**
    * 改变指定原子的类型
-   * @param idx 原子索引
-   * @param symbol 元素符号
    */
   convert_atom(idx: number, symbol: string): void;
 
   /**
    * 从指定原子查找一个组的原子
-   * @param idx 指定原子的索引
-   * @param pass 忽略的原子
+   * @returns 搜索到的原子索引数组
    */
-  search_group(idx: number, pass: number[]): void;
+  search_group(idx: number, pass: number[]): number[];
 
   /**
    * 根据传入的原子数量，获取键长、键角、二面角等数据
-   * @param  atms 原子索引
    */
   get_value(atms: number[]): number[];
 
   /**
    * 隐藏指定类型的原子
-   * @param {string} sym 要隐藏的元素类型
-   * @param {boolean} vis 是否可见
    */
   set_atomVisibleByS(sym: string, vis: boolean): void;
 
   /**
    * 获取分子的空间边界
+   * @param bord 边界扩展值
    */
-  space_border(): number[][];
+  space_border(bord?: number): number[][];
 }
 
 export class Atoms {
   declare mole: Mole;
+  declare selects: number[];
   constructor(mole: Mole);
 
   /**
    * 添加一个原子
-   * @param sym 原子符号
-   * @param xyz 原子坐标
-   * @param idx 原子编号
-   * @param showLabel 是否显示标签
    */
-  append(sym: string, xyz: number[], idx: number, showLabel: boolean): Atom;
+  append(sym: string, xyz: number[], idx: number): Atom;
 
   /**
    * 删除指定索引的原子
-   * @param idx 原子索引
    */
   delete(idx: number): void;
 
   /**
    * 获取指定索引的原子
-   * @param idx 原子索引
    */
-  get(idx: number): Atom;
+  get(idx: number): Atom | undefined;
 
   /**
    * 获取所有原子
@@ -147,8 +134,6 @@ export class Atoms {
 
   /**
    * 添加选择的原子
-   * @param atms 原子索引数组
-   * @param delOld 是否取消选择已经选择的原子(默认fasle)
    */
   add_selects(atms: number[], delOld?: boolean): void;
 
@@ -159,7 +144,6 @@ export class Atoms {
 
   /**
    * 计算指定原子的重量
-   * @param atms 原子数组
    */
   calc_weight(atms: number[]): number;
 
@@ -169,46 +153,25 @@ export class Atoms {
   reset_color(): void;
 
   /**
-   * 设置原子的属性
-   * @param func 属性/函数名称
-   * @param type 类型，属性的类型，可以为value，arrow，label
-   * @param vals 属性值
-   * @param show 是否立即显示，默认为true
-   */
-  set_props(
-    func: string,
-    type: string,
-    vals: number[][] | [number, string][],
-    show?: boolean,
-  ): void;
-
-  /**
-   * 显示原子的属性
-   * @param func 属性/函数名称
-   * @param type 属性类型，可以为value，arrow，label
-   */
-  show_props(func: string, type: string): void;
-
-  /**
-   * 重新为原子编号，并返回原子编号的映射关系
-   * @param atomLabelType 原子标签类型，可选参数，可以设为idx，sym，mix
+   * 重新为原子编号
    */
   re_number(atomLabelType?: string): { [key: number]: number };
 
   /**
    * 获取指定原子的中心坐标
-   * @param atms 原子索引数组
    */
   get_center(atms: number[]): number[];
 }
 
-export class Atom extends THREE.Mesh {
+export class Atom {
+  symbol: string;
   sym: string;
   idx: number;
-  constructor(mole: Mole, sym: string, xyz: number[][], idx: number);
+  radius: number;
+  constructor(mole: Mole, sym: string, xyz: number[], idx: number);
 
   /**
-   * 获取该原子的相邻原子，根据是否成键来确定相邻原子
+   * 获取该原子的相邻原子
    */
   neighbors(): number[];
 
@@ -219,33 +182,26 @@ export class Atom extends THREE.Mesh {
 
   /**
    * 设置该原子的原子类型
-   * @param symbol 原子类型
    */
   set_type(symbol: string): void;
 
   /**
    * 设置原子坐标
-   * @param x 原子坐标x
-   * @param y 原子坐标y
-   * @param z 原子坐标z
    */
   set_coord(x: number, y: number, z: number): void;
 
   /**
    * 设置该原子半径
-   * @param radius 原子半径
    */
   set_radius(radius: number): void;
 
   /**
    * 设置原子材质
-   * @param name 原子材质名称
    */
   set_material(name: string): void;
 
   /**
    * 设置该原子的可见性
-   * @param visible 是否可见
    */
   set_visible(visible: boolean): void;
 
@@ -255,8 +211,7 @@ export class Atom extends THREE.Mesh {
   get_minRepDir(): THREE.Vector3 | undefined;
 
   /**
-   * 设置原子的颜色，相当于创建了一个新的材质（未记录）
-   * @param color 颜色值，如： #FFFFFF
+   * 设置原子的颜色
    */
   set_color(color: string): void;
 
@@ -266,48 +221,29 @@ export class Atom extends THREE.Mesh {
   reset_color(): void;
 }
 
-export class AtomProp {
-  name: string;
-  type: string;
-  vals: number[][] | [number, string][];
-  constructor(
-    name: string,
-    type: string,
-    vals: number[][] | [number, string][],
-  );
-}
-
 export class Bonds {
   mole: Mole;
   constructor(mole: Mole);
+
   /**
-   * 添加一个键，如果两个原子索引相同则会添加失败
-   * @param atm1 第一个原子索引
-   * @param atm2 第二个原子索引
-   * @param type 键的类型，默认为mesh
+   * 添加一个键
    */
   append(atm1: number, atm2: number, type?: string): Bond | undefined;
 
   /**
    * 删除指定的键
-   * @param atm1 第一个原子的索引
-   * @param atm2 第二个原子的索引
    */
   delete(atm1: number, atm2: number): void;
 
   /**
-   * 根据传入的原子构造键，若不传入则默认构造所有的键
-   * @param atms 原子索引数组
-   * @param delOld 是否删除旧的键，默认为true
+   * 根据传入的原子构造键
    */
-  build(atms?: number[], delOld?: boolean): void;
+  build(atms?: number[], delOld?: boolean, bonds?: [number, number][]): void;
 
   /**
    * 根据索引获得键
-   * @param atm1 第一个原子索引
-   * @param atm2 第二个原子索引
    */
-  get(atm1: number, atm2: number): Bond;
+  get(atm1: number, atm2: number): Bond | undefined;
 
   /**
    * 获取所有的键
@@ -316,11 +252,8 @@ export class Bonds {
 
   /**
    * 设置键的类型
-   * @param atm1 第一个原子的索引
-   * @param atm2 第二个原子的索引
-   * @param type 键的类型
    */
-  set_bondType(atm1: number, atm2: number, type: string): void;
+  set_bondType(atm1: number, atm2: number, type: string, add?: boolean): void;
 }
 
 export class Bond {
@@ -330,39 +263,37 @@ export class Bond {
 
   /**
    * 设置键的类型
-   * @param type 键的类型
    */
   set_type(type: string): void;
 
   /**
    * 设置键的颜色
-   * @param color 颜色值，如： #FFFFFF
    */
   set_color(color: string): void;
 }
 
 export class Labels {
   mole: Mole;
+
   /**
    * 添加一个标签
    * @param text 标签文本
-   * @param bind 绑定的原子
-   * @param show 是否显示
+   * @param cent 标签中心坐标
+   * @param dist 与中心距离
+   * @param bind 绑定的原子索引
    */
-  append(text: string, bind: number[], show: boolean): Label;
+  append(text: string, cent: number[], dist: number, bind: number[]): Label;
 
   /**
    * 删除一个标签
-   * @param idx 标签绑定的原子
+   * @param name 标签名称
    */
-  delete(idx: number[]): void;
+  delete(name: string): void;
 
   /**
-   * 获取绑定指定原子id的标签
-   * @param idx 标签绑定的原子
-   * @param push 不存在的话是否添加，可选参数
+   * 根据名称获取标签
    */
-  get(idx: number[], push?: boolean): Label | undefined;
+  get(name: string): Label;
 
   /**
    * 获取所有标签
@@ -372,71 +303,170 @@ export class Labels {
 
 export class Label {
   mole: Mole;
+  text: string;
   bind: number[];
+  cent: number[];
+  dist: number;
   context: CanvasRenderingContext2D;
   canvas: HTMLCanvasElement;
 
   /**
    * 实例化Label对象
-   * @param mole 分子对象
-   * @param text 文本内容
-   * @param bind 绑定原子
    */
-  constructor(mole: Mole, text: string, bind: number[]);
+  constructor(
+    mole: Mole,
+    text: string,
+    cent: number[],
+    dist: number,
+    bind: number[],
+  );
 
   /**
    * 设置标签的文本内容
-   * @param text 标签文本
    */
   set_text(text: string): void;
 
   /**
    * 设置标签的可见性
-   * @param visible 标签是否可见
    */
   set_visible(visible: boolean): void;
 }
 
 export class Arrows {
-  mole: Mole;
-  constructor(mole: Mole);
+  mol: Mole;
+  constructor(mol: Mole);
 
   /**
    * 添加箭头
    * @param pos 位置
    * @param dir 方向
    * @param len 长度
-   * @param bind 绑定的原子
+   * @param bind 绑定的原子索引
    * @param radius 半径
    * @param material 箭头的材质
    */
   append(
-    pos: number[], // 箭头位置
+    pos: number[],
     dir: number[],
     len: number,
-    bind: number,
+    bind: number[],
     radius: number,
-    material: string,
+    material?: string,
   ): Arrow;
 
   /**
    * 获取所有箭头
    */
   getAll(): Arrow[];
-
-  set_color(color: string): void;
 }
 
 export class Arrow {
+  mol: Mole;
+  bind: number[];
+  length: number;
+  radius: number;
+  direction: THREE.Vector3;
+
   /**
    * 设置箭头的长度
-   * @param length 箭头长度
    */
   set_length(length: number): void;
 
   /**
    * 设置箭头的朝向
-   * @param direction 箭头的方向
+   * @param direction 方向向量
    */
-  set_direction(direction: THREE.Vector3): void;
+  set_direction(direction: number[]): void;
+
+  /**
+   * 设置箭头颜色
+   */
+  set_color(color: THREE.Color): void;
+}
+
+export class Angles {
+  mole: Mole;
+  constructor(mole: Mole);
+  append(atmA: number, atmB: number, atmC: number, acute?: boolean): void;
+  getAll(): THREE.Object3D[];
+}
+
+export class Angle {
+  mole: Mole;
+  type: string;
+  constructor(
+    mole: Mole,
+    atmA: number,
+    atmB: number,
+    atmC: number,
+    acute: boolean,
+  );
+}
+
+export class Clouds {
+  mol: Mole;
+  isov: number;
+  building: boolean;
+  append(
+    start: number[],
+    range: number[],
+    resol: number[],
+    name: string,
+    values: Float32Array,
+  ): void;
+  getAll(): Cloud[];
+  get(name: string): Cloud | undefined;
+  set_isov(isov: number): void;
+  show_cloud(name: string): void;
+}
+
+export class Cloud {
+  mol: Mole;
+  name: string;
+  cloudP: CloudP | undefined;
+  cloudN: CloudN | undefined;
+  build(isov: number): void;
+  reverse(): void;
+}
+
+export class CloudP {
+  type: string;
+}
+
+export class CloudN {
+  type: string;
+}
+
+export class Surfs {
+  mol: Mole;
+  append(
+    verts: number[],
+    types: number[],
+    name: string,
+    wireframe: boolean,
+  ): Surf;
+  getAll(): Surf[];
+  get(name: string): Surf;
+  hideAll(): void;
+}
+
+export class Surf {
+  type: string;
+}
+
+export class Field {
+  mole: Mole;
+  constructor(mole: Mole);
+  build(data: number[][]): void;
+}
+
+export class Points {
+  mole: Mole;
+  constructor(mole: Mole);
+  append(pos: number[], color: string, radius: number): Point;
+}
+
+export class Point {
+  mole: Mole;
+  constructor(mole: Mole, pos: number[], color: string, radius: number);
 }
