@@ -6,5 +6,5 @@ export default {
   comp: Plugin,
   tip: "xyzrender",
   img: "",
-  version: "1.0.3",
+  version: "1.0.1",
 };
