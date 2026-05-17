@@ -9,7 +9,7 @@
 
 ## 使用方式
 
-将打包的压缩包解压到wmview程序根目录下的plugins目录，重新启动wmview程序即可
+将`release`中打包的压缩包解压到wmview程序根目录下的plugs目录，重新启动wmview程序即可
 
 插件内包含了一个嵌入式python，第一次使用的时候会自动安装依赖，需要等待一会
 
