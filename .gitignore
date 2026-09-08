@@ -48,3 +48,7 @@ test.xyz
 *.zip
 ref.xyz
 log.txt
+
+# 渲染引擎打包产物 / 中间目录
+/build/
+/xyzrender.exe

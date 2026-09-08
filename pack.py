@@ -32,13 +32,12 @@ def compress_specified_items(output_zip: str, items: list, compress_level: int =
 
 # ====================== 【只需修改这里】 ======================
 # 自定义你要压缩的 文件 和 文件夹（混合写就行）
+# 按开发指南：压缩包内直接是插件文件（index.js + assets/ + xyzrender.exe），不带顶层目录
+# xyzrender.exe 由 build_exe.py 打包（已内置 python 运行时 + xyzrender 依赖）
 TO_COMPRESS = [
-    "dist/main.js",        # 单个文件
-    "dist/main.css",       # 单个文件
-    "icon.png",        # 文件夹
-    "main.py",
-    "deps.py",
-    "e:/code/wmview/plugins/python-3.10",        # 子文件夹
+    "dist/index.js",        # MF 入口（固定文件名）
+    "dist/assets",          # 依赖 chunk 目录
+    "xyzrender.exe",        # 渲染引擎（免安装 python / 免首次 pip 装依赖）
 ]
 
 # 开始压缩

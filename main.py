@@ -8,12 +8,21 @@ from typing import TypedDict
 import numpy as np
 from xyzrender import load, render
 
+
 # 🔥 设置 stdin 为 UTF-8 编码，解决中文乱码问题
 if sys.platform == "win32":
     sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8")
 
 
-SCRIPT_DIR = str(Path(__file__).parent.as_posix())
+def app_dir() -> Path:
+    # PyInstaller 冻结后 __file__ 指向临时解包目录(_MEIPASS)，
+    # 产物(ref.xyz/main.png/log.txt)应写到 exe 所在的插件目录
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    return Path(__file__).parent
+
+
+SCRIPT_DIR = app_dir().as_posix()
 sys.path.insert(0, SCRIPT_DIR)
 
 # 🔥 核心配置：日志保存到文件
@@ -65,6 +74,11 @@ def main(paras: "Paras"):
 
 
 if __name__ == "__main__":
-    stdin = sys.stdin.read()
-    paras: Paras = json.loads(stdin)
-    main(paras)
+    try:
+        stdin = sys.stdin.read()
+        paras: Paras = json.loads(stdin)
+        main(paras)
+    except Exception:
+        # 主程序只回传退出码与 stdout/stderr；异常详情写入同目录 log.txt
+        logging.exception("渲染失败")
+        sys.exit(1)
